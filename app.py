@@ -1,46 +1,52 @@
 import streamlit as st
 import pandas as pd
-import pickle
 import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 
-st.title("Customer Segmentation using Pre-trained K-Means Model")
+st.title("Customer Segmentation with K-Means")
 
-# Load model
-with open("K-Mean.pkl", "rb") as file:
-    model = pickle.load(file)
+# Load your raw data (modify the path if needed)
+df = pd.read_csv("clean_sales_data.csv")
 
-# Load raw CSV data
-df = pd.read_csv("clean_sales_data.csv")  # <-- Replace with your real file
-
-# Preprocess the same way as in training
+# Preprocess like during model training
 customer_df = df.groupby('Purchase Address').agg({
     'Order ID': 'nunique',
     'Sales': 'sum'
 }).rename(columns={'Order ID': 'Frequency', 'Sales': 'Monetary'})
 
-# Scale the features like during training
+# Standardize
 scaler = StandardScaler()
 scaled = scaler.fit_transform(customer_df)
 
-# Predict with model
-labels = model.predict(scaled)
-customer_df['Cluster'] = labels
+# ---- Elbow Plot ----
+sse = []
+K_range = range(1, 11)
+for k in K_range:
+    km = KMeans(n_clusters=k, random_state=42)
+    km.fit(scaled)
+    sse.append(km.inertia_)
 
-# Reduce to 2D for plotting
-pca = PCA(n_components=2)
-reduced = pca.fit_transform(scaled)
+st.subheader("Elbow Method (to find optimal k)")
+fig1, ax1 = plt.subplots()
+ax1.plot(K_range, sse, marker='o')
+ax1.set_title("Elbow Method")
+ax1.set_xlabel("Number of Clusters (k)")
+ax1.set_ylabel("SSE")
+ax1.grid(True)
+st.pyplot(fig1)
 
-# Plotting
-st.subheader("Cluster Visualization")
-fig, ax = plt.subplots()
-scatter = ax.scatter(reduced[:, 0], reduced[:, 1], c=labels, cmap='tab10', s=100, edgecolors='k')
-legend = ax.legend(*scatter.legend_elements(), title="Cluster")
-ax.add_artist(legend)
-plt.title("K-Means Clusters (PCA Reduced)")
-st.pyplot(fig)
+# ---- Cluster Assignment with k=4 ----
+k = st.slider("Select number of clusters (k)", 2, 10, 4)
+kmeans = KMeans(n_clusters=k, random_state=42)
+customer_df['Cluster'] = kmeans.fit_predict(scaled)
 
-# Show table
-st.subheader("Clustered Customers")
-st.write(customer_df)
+# ---- Pairplot ----
+st.subheader("Customer Segments (Pairplot)")
+fig2 = sns.pairplot(customer_df.reset_index(), hue='Cluster', palette='tab10')
+st.pyplot(fig2)
+
+# ---- Cluster Means ----
+st.subheader("Average Values per Cluster")
+st.write(customer_df.groupby('Cluster').mean())
