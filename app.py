@@ -7,7 +7,7 @@ from sklearn.decomposition import PCA
 st.title("Customer Segmentation using Pre-trained K-Means Model")
 
 # Load model
-with open("K-Mean.pkl", "rb") as file:
+with open("K-Mean.pkl", "wb") as file:
     model = pickle.load(file)
 
 # Load input data from a fixed CSV file
