@@ -5,7 +5,7 @@ import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 
-st.title("Customer Segmentation with K-Means")
+st.title("Project2_group5")
 
 # Load your raw data (modify the path if needed)
 df = pd.read_csv("clean_sales_data.csv")
