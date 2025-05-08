@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import pickle
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
 st.title("Customer Segmentation using Pre-trained K-Means Model")
@@ -10,21 +11,26 @@ st.title("Customer Segmentation using Pre-trained K-Means Model")
 with open("K-Mean.pkl", "rb") as file:
     model = pickle.load(file)
 
-# Load input data from a fixed CSV file
-data_path = "clean_sales_data.csv"  # <- CHANGE this to your actual path
-df = pd.read_csv(data_path)
+# Load raw CSV data
+df = pd.read_csv("clean_sales_data.csv")  # <-- Replace with your real file
 
-# Display raw data
-st.subheader("Raw Input Data")
-st.write(df.head())
+# Preprocess the same way as in training
+customer_df = df.groupby('Purchase Address').agg({
+    'Order ID': 'nunique',
+    'Sales': 'sum'
+}).rename(columns={'Order ID': 'Frequency', 'Sales': 'Monetary'})
 
-# Predict clusters
-labels = model.predict(df)
-df['Cluster'] = labels
+# Scale the features like during training
+scaler = StandardScaler()
+scaled = scaler.fit_transform(customer_df)
 
-# Dimensionality reduction for plotting (if data has many columns)
+# Predict with model
+labels = model.predict(scaled)
+customer_df['Cluster'] = labels
+
+# Reduce to 2D for plotting
 pca = PCA(n_components=2)
-reduced = pca.fit_transform(df.drop(columns=['Cluster']))
+reduced = pca.fit_transform(scaled)
 
 # Plotting
 st.subheader("Cluster Visualization")
@@ -35,6 +41,6 @@ ax.add_artist(legend)
 plt.title("K-Means Clusters (PCA Reduced)")
 st.pyplot(fig)
 
-# Show clustered data
-st.subheader("Clustered Data")
-st.write(df)
+# Show table
+st.subheader("Clustered Customers")
+st.write(customer_df)
